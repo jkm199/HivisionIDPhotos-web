@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>证件照生成器</title>
+  <!-- 引入 Vue.js 3 -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
+  <!-- 引入 Font Awesome -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    integrity="sha512-papFfGz+OzBFRYkQ3hB1iZs+8tGwM/nlLkSpYlgvbZL0ZlAb6hK/SjBVV3+4b9T1gWT2rtvRkQ6q1uR1k5oEwA=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+  <style>
+    /* 全局样式 */
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom, #ebf8ff, #e0e7ff);
+      box-sizing: border-box;
+    }
+    *, *::before, *::after {
+      box-sizing: inherit;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 800px; /* 最大宽度 */
+      margin: 0 auto; /* 居中 */
+      padding: 20px;
+    }
+
+    /* 顶部导航栏样式 */
+    .header {
+      background-color: rgba(255, 255, 255, 0.9);
+      color: #4c51bf;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      border-radius: 10px;
+    }
+    .header-title {
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    /* 主要内容区样式 */
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    /* 图片预览区样式 */
+    .image-preview {
+      background-color: #fff;
+      border-radius: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 20px;
+      transition: border 0.3s;
+    }
+    .image-preview.image-selected {
+      border: 2px solid #4c51bf;
+    }
+    .placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 300px;
+      background: linear-gradient(to bottom right, #ebf8ff, #d6bcfa);
+      color: #5a67d8;
+      text-align: center;
+    }
+    .placeholder i {
+      font-size: 60px;
+      margin-bottom: 15px;
+    }
+    .placeholder-text {
+      font-size: 16px;
+      padding: 0 10px;
+    }
+    .image-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      background-color: #fff;
+      position: relative;
+    }
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #5a67d8;
+      z-index: 10;
+    }
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-left-color: #4c51bf;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .images-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      width: 100%;
+      padding: 10px;
+    }
+    .image-section {
+      width: 45%;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .image-label {
+      font-size: 14px;
+      color: #4c51bf;
+      margin-bottom: 10px;
+      display: block;
+    }
+    .processed-image {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 10px;
+    }
+
+    /* 编辑选项区样式 */
+    .options-container {
+      background-color: rgba(255, 255, 255, 0.9);
+      border-radius: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .option-item {
+      margin-bottom: 20px;
+    }
+    .option-label {
+      font-size: 16px;
+      color: #4c51bf;
+      margin-bottom: 10px;
+      display: block;
+    }
+    .picker, .size-input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #c3dafe;
+      border-radius: 10px;
+      background-color: #fff;
+      color: #4c51bf;
+      font-size: 14px;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+    }
+    .picker {
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%234c51bf' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 16px 16px;
+    }
+    .size-inputs {
+      display: flex;
+      gap: 10px;
+    }
+    .size-inputs input {
+      flex: 1;
+    }
+
+    /* 背景颜色选择样式 */
+    .color-options {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .color-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s;
+    }
+    .color-circle:hover {
+      transform: scale(1.1);
+    }
+    .color-selected::after {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      width: 48px;
+      height: 48px;
+      border: 4px solid #4c51bf;
+      border-radius: 50%;
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+
+    /* 提示信息样式 */
+    .info-box {
+      background-color: #ebf4ff;
+      padding: 15px;
+      border-radius: 10px;
+      display: flex;
+      align-items: flex-start;
+    }
+    .info-text {
+      color: #5a67d8;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* 主要操作按钮样式 */
+    .action-buttons {
+      margin-top: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .action-button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: background 0.3s;
+      text-decoration: none;
+      text-align: center;
+    }
+    .action-button:disabled {
+      background-color: #a0aec0;
+      cursor: not-allowed;
+    }
+    .select-button {
+      background: linear-gradient(to right, #667eea, #764ba2);
+    }
+    .print-button {
+      background: linear-gradient(to right, #ed64a6, #f6ad55);
+    }
+    .save-button, .save-print-button {
+      background: none;
+      border: none;
+      padding: 10px 15px;
+      font-size: 14px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .save-print-button {
+      background: linear-gradient(to right, #ed64a6, #f6ad55);
+    }
+    .save-button:disabled, .save-print-button:disabled {
+      background: #a0aec0;
+      cursor: not-allowed;
+    }
+    .button-icon {
+      font-size: 18px;
+      margin-right: 8px;
+    }
+
+    /* 图标颜色调整 */
+    .icon-white {
+      color: #fff;
+    }
+    .icon-indigo {
+      color: #4c51bf;
+    }
+
+    /* 隐藏的文件输入 */
+    .download-link {
+      display: none;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 600px) {
+      .images-wrapper {
+        flex-direction: column;
+        align-items: center;
+      }
+      .image-section {
+        width: 80%;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div id="app" class="container">
+    <!-- 顶部导航栏 -->
+    <div class="header">
+      <div class="header-title">证件照生成器</div>
+    </div>
+
+    <!-- 主要内容区 -->
+    <div class="main-content">
+      <!-- 图片预览区 -->
+      <div :class="['image-preview', { 'image-selected': processedImageUrl || printImageUrl }]">
+        <div v-if="!processedImageUrl && !printImageUrl" class="placeholder">
+          <!-- 使用 Font Awesome 图标 -->
+          <i class="fas fa-camera icon-indigo"></i>
+          <div class="placeholder-text">
+            请先选择尺寸和背景颜色，然后点击下方选择照片按钮开始
+          </div>
+        </div>
+        <div v-else class="image-container">
+          <div v-if="isLoading" class="loading-overlay">
+            <div class="spinner"></div>
+            <div>处理中...</div>
+          </div>
+          <div v-else class="images-wrapper">
+            <div v-if="processedImageUrl" class="image-section">
+              <span class="image-label">标准版</span>
+              <img :src="processedImageUrl" alt="标准版照片" class="processed-image">
+              <button
+                class="save-button"
+                @click="savePhoto"
+                :disabled="!processedImageUrl"
+              >
+                <i class="fas fa-download button-icon icon-white"></i>
+                保存标准版
+              </button>
+            </div>
+            <div v-if="printImageUrl" class="image-section">
+              <span class="image-label">打印版</span>
+              <img :src="printImageUrl" alt="打印版照片" class="processed-image">
+              <button
+                class="save-print-button"
+                @click="savePrintPhoto"
+                :disabled="!printImageUrl"
+              >
+                <i class="fas fa-download button-icon icon-white"></i>
+                保存打印版
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 编辑选项区 -->
+      <div class="options-container">
+        <!-- 尺寸选择 -->
+        <div class="option-item">
+          <label class="option-label" for="size-select">选择尺寸</label>
+          <select id="size-select" v-model="selectedSizeName" @change="handleSizeChange" class="picker">
+            <option value="" disabled>请选择尺寸</option>
+            <option v-for="(option, index) in sizeOptions" :key="index" :value="option">{{ option }}</option>
+          </select>
+        </div>
+
+        <!-- 尺寸输入框 -->
+        <div class="option-item size-inputs" v-if="selectedSizeName === '自定义'">
+          <input
+            type="number"
+            placeholder="宽度（mm）"
+            class="size-input"
+            v-model="width"
+            min="1"
+          />
+          <input
+            type="number"
+            placeholder="高度（mm）"
+            class="size-input"
+            v-model="height"
+            min="1"
+          />
+        </div>
+
+        <!-- 背景颜色选择 -->
+        <div class="option-item">
+          <label class="option-label">背景颜色</label>
+          <div class="color-options">
+            <div
+              v-for="(color, index) in colors"
+              :key="index"
+              :style="{ backgroundColor: color }"
+              :class="['color-circle', { 'color-selected': selectedColor === color }]"
+              @click="selectColor(color)"
+            ></div>
+          </div>
+        </div>
+
+        <!-- 提示信息 -->
+        <div class="info-box">
+          <div class="info-text">
+            选择合适的尺寸和背景颜色，然后点击"选择照片"上传您的人像照片。我们将自动处理并生成符合要求的证件照。
+          </div>
+        </div>
+      </div>
+
+      <!-- 主要操作按钮 -->
+      <div class="action-buttons">
+        <button class="action-button select-button" @click="triggerFileSelect">
+          <i class="fas fa-image button-icon icon-white"></i>
+          选择照片
+        </button>
+        <button
+          class="action-button print-button"
+          @click="generatePrintVersion"
+          :disabled="!processedImageUrl"
+        >
+          <i class="fas fa-print button-icon icon-white"></i>
+          生成打印版
+        </button>
+      </div>
+
+      <!-- 隐藏的文件输入 -->
+      <input type="file" accept="image/*" ref="fileInput" @change="handleFileChange" class="download-link">
+    </div>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          selectedSizeName: '',
+          width: '',
+          height: '',
+          isLoading: false,
+          transparentImageBase64: '', // 原始透明人像Base64
+          processedImageUrl: '', // 添加背景后的图片Base64
+          printImageUrl: '', // 生成的打印版图片Base64
+          sizeOptions: [
+            '一寸 (25x35mm)',
+            '自定义',
+            '驾驱证 (22x32mm)',
+            '二寸 (35x49mm)',
+            '小一寸 (22x32mm)',
+            '小二寸 (35x45mm)',
+            '简历照 (25x35mm)',
+            '硕士研究生考试报名 (41x54mm)',
+            '英语四六级 (33x48mm)',
+            '在职研究生考试 (33x48mm)',
+            '教师资格证 (41x54mm)',
+            '全国英语等级考试 (33x48mm)',
+            '英语AB级 (15x20mm)',
+            '2023年英语专八 (25x35mm)',
+            '成人本科学位考试 (33x48mm)',
+            '全国职称英语等级考试 (36x49mm)',
+            '全国翻译专业资格考试 (35x49mm)',
+            '全国商务英语翻译考试 (25x35mm)',
+            '医护英语考试 (35x49mm)',
+            '学位英语报名 (35x53mm)',
+            '普通话水平测试 (33x48mm)',
+            '韩语能力考试 (30x41mm)',
+            '托业考试 (32x41mm)',
+            '托福考试 (25x35mm)',
+            '日语鉴定考试 (29x40mm)',
+            '法语学习考试 (35x49mm)',
+            '外语口译证书 (33x48mm)',
+            '雅思 (33x48mm)'
+          ],
+          sizeDimensions: {
+            '一寸 (25x35mm)': { width: '25', height: '35' },
+            '自定义': {},
+            '驾驱证 (22x32mm)': { width: '22', height: '32' },
+            '二寸 (35x49mm)': { width: '35', height: '49' },
+            '小一寸 (22x32mm)': { width: '22', height: '32' },
+            '小二寸 (35x45mm)': { width: '35', height: '45' },
+            '简历照 (25x35mm)': { width: '25', height: '35' },
+            '硕士研究生考试报名 (41x54mm)': { width: '41', height: '54' },
+            '英语四六级 (33x48mm)': { width: '33', height: '48' },
+            '在职研究生考试 (33x48mm)': { width: '33', height: '48' },
+            '教师资格证 (41x54mm)': { width: '41', height: '54' },
+            '全国英语等级考试 (33x48mm)': { width: '33', height: '48' },
+            '英语AB级 (15x20mm)': { width: '15', height: '20' },
+            '2023年英语专八 (25x35mm)': { width: '25', height: '35' },
+            '成人本科学位考试 (33x48mm)': { width: '33', height: '48' },
+            '全国职称英语等级考试 (36x49mm)': { width: '36', height: '49' },
+            '全国翻译专业资格考试 (35x49mm)': { width: '35', height: '49' },
+            '全国商务英语翻译考试 (25x35mm)': { width: '25', height: '35' },
+            '医护英语考试 (35x49mm)': { width: '35', height: '49' },
+            '学位英语报名 (35x53mm)': { width: '35', height: '53' },
+            '普通话水平测试 (33x48mm)': { width: '33', height: '48' },
+            '韩语能力考试 (30x41mm)': { width: '30', height: '41' },
+            '托业考试 (32x41mm)': { width: '32', height: '41' },
+            '托福考试 (25x35mm)': { width: '25', height: '35' },
+            '日语鉴定考试 (29x40mm)': { width: '29', height: '40' },
+            '法语学习考试 (35x49mm)': { width: '35', height: '49' },
+            '外语口译证书 (33x48mm)': { width: '33', height: '48' },
+            '雅思 (33x48mm)': { width: '33', height: '48' }
+          },
+          colors: ['#02A7F0', '#D9001B', '#FFFFFF', '#3492C4', '#3D99E2'],
+          selectedColor: '#02A7F0',
+          fileInput: null
+        };
+      },
+      methods: {
+        // 将毫米转换为像素
+        mmToPx(mm, dpi = 300) {
+          return Math.round((mm / 25.4) * dpi);
+        },
+
+        handleSizeChange() {
+          const selectedOption = this.selectedSizeName;
+          if (selectedOption === '自定义') {
+            this.width = '';
+            this.height = '';
+          } else {
+            const dimensions = this.sizeDimensions[selectedOption];
+            if (dimensions) {
+              this.width = dimensions.width;
+              this.height = dimensions.height;
+            }
+          }
+        },
+
+        selectColor(color) {
+          this.selectedColor = color;
+          if (this.transparentImageBase64) {
+            this.addBackgroundToImage();
+          }
+        },
+
+        // 生成随机字符串用于文件命名
+        generateRandomString(length = 8) {
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+          let result = '';
+          for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          return result;
+        },
+
+        triggerFileSelect() {
+          if (!this.canSelectImage) {
+            alert('请先选择尺寸和背景颜色');
+            return;
+          }
+          this.$refs.fileInput.click();
+        },
+
+        handleFileChange(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          // 验证宽度和高度是否为有效数字
+          const widthMm = parseFloat(this.width);
+          const heightMm = parseFloat(this.height);
+          if (isNaN(widthMm) || isNaN(heightMm) || widthMm <= 0 || heightMm <= 0) {
+            alert('请输入有效的宽度和高度');
+            return;
+          }
+
+          const widthPx = this.mmToPx(widthMm);
+          const heightPx = this.mmToPx(heightMm);
+
+          const formData = new FormData();
+          formData.append('input_image', file);
+          formData.append('width', widthPx);
+          formData.append('height', heightPx);
+          formData.append('human_matting_model', 'hivision_modnet');
+          formData.append('face_detect_model', 'mtcnn');
+          formData.append('hd', 'false');
+
+          this.isLoading = true;
+
+          fetch('https://ps.zhuangbishipin.top/idphoto', {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === true) {
+              if (data.image_base64_hd) {
+                this.transparentImageBase64 = data.image_base64_hd.replace(/^data:image\/\w+;base64,/, '');
+                alert('照片处理成功');
+              } else if (data.image_base64_standard) {
+                this.transparentImageBase64 = data.image_base64_standard.replace(/^data:image\/\w+;base64,/, '');
+                alert('照片处理成功（标准质量）');
+              } else {
+                alert('未获取到处理后的图片');
+                this.isLoading = false;
+                return;
+              }
+              this.addBackgroundToImage();
+            } else {
+              alert('图片处理失败');
+              this.isLoading = false;
+            }
+          })
+          .catch(error => {
+            console.error('API 调用失败：', error);
+            alert('上传失败');
+            this.isLoading = false;
+          });
+        },
+
+        addBackgroundToImage() {
+          if (!this.transparentImageBase64) {
+            alert('处理失败：无透明人像数据');
+            this.isLoading = false;
+            return;
+          }
+
+          const formData = new FormData();
+          const blob = this.base64ToBlob(this.transparentImageBase64, 'image/png');
+          formData.append('input_image', blob, `transparent_${this.generateRandomString()}.png`);
+          formData.append('color', this.selectedColor.slice(1)); // 去掉 '#'
+          formData.append('kb', '200');
+          formData.append('render', '0');
+
+          fetch('https://ps.zhuangbishipin.top/add_background', {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === true && data.image_base64) {
+              this.processedImageUrl = `data:image/png;base64,${data.image_base64.replace(/^data:image\/\w+;base64,/, '')}`;
+              alert('背景已添加');
+            } else {
+              alert('背景添加失败');
+            }
+          })
+          .catch(error => {
+            console.error('调用 AddBackground API 失败：', error);
+            alert('背景添加失败');
+          })
+          .finally(() => {
+            this.isLoading = false;
+          });
+        },
+
+        generatePrintVersion() {
+          if (!this.processedImageUrl) {
+            alert('请先处理照片');
+            return;
+          }
+
+          this.isLoading = true;
+
+          // 提取 Base64 数据并转换为 Blob
+          const base64Data = this.processedImageUrl.split(',')[1];
+          const blob = this.base64ToBlob(base64Data, 'image/png');
+
+          const formData = new FormData();
+          formData.append('input_image', blob, `print_version_${this.generateRandomString()}.png`);
+          const widthPx = this.mmToPx(parseFloat(this.width));
+          const heightPx = this.mmToPx(parseFloat(this.height));
+          formData.append('width', widthPx);
+          formData.append('height', heightPx);
+          formData.append('kb', '200');
+
+          fetch('https://ps.zhuangbishipin.top/generate_layout_photos', {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === true && data.image_base64) {
+              this.printImageUrl = `data:image/png;base64,${data.image_base64.replace(/^data:image\/\w+;base64,/, '')}`;
+              alert('打印版生成成功');
+            } else {
+              alert('打印版生成失败');
+            }
+          })
+          .catch(error => {
+            console.error('调用 GeneratePrintVersion API 失败：', error);
+            alert('生成失败');
+          })
+          .finally(() => {
+            this.isLoading = false;
+          });
+        },
+
+        savePhoto() {
+          if (!this.processedImageUrl) {
+            alert('暂无可保存的标准版照片');
+            return;
+          }
+          this.downloadImage(this.processedImageUrl, `standard_${Date.now()}.png`);
+        },
+
+        savePrintPhoto() {
+          if (!this.printImageUrl) {
+            alert('暂无可保存的打印版照片');
+            return;
+          }
+          this.downloadImage(this.printImageUrl, `print_${Date.now()}.png`);
+        },
+
+        downloadImage(dataUrl, fileName) {
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        },
+
+        base64ToBlob(base64, mime) {
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          return new Blob([byteArray], { type: mime });
+        }
+      },
+      computed: {
+        canSelectImage() {
+          return this.selectedSizeName && this.selectedColor;
+        }
+      },
+      mounted() {
+        // Reference to the hidden file input
+        this.fileInput = this.$refs.fileInput;
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
