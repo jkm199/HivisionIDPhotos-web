@@ -12,7 +12,7 @@
 
 ## 特别说明
 
-- 此项目所有代码均为 GPT-4 和 Claude 结合生成，感谢：[gpt4中文镜像站](https://tz.zhufushipinzhizuo.com/17.html)。
+- 此项目所有代码均为 GPT-4 和 Claude 结合生成，感谢：[gpt4中文镜像站](https://tz.zhufushipinzhizuo.com/17.html?sockstack&section=table)。
 - 本项目需要配合前面提到的后端 API 运行，出于安全考虑，目前代码中的 API 无效，务必替换为自己搭建的 API。
 
 - <img src="https://github.com/user-attachments/assets/ff3d9b6b-4430-435a-9fd9-40cad8117e27" width="400">
